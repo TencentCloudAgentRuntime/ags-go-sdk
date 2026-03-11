@@ -41,9 +41,9 @@ func (client *Client) RunCode(ctx context.Context, code string, config *RunCodeC
 	config = config.loadDefault()
 	onOutput = onOutput.loadDefault()
 
-	// Build URL: https://{domain}/execute
+	// Build URL: {scheme}://{domain}/execute
 	sandboxExecuteURL := url.URL{
-		Scheme: "https",
+		Scheme: client.config.GetScheme(),
 		Host:   client.config.Domain,
 		Path:   "/execute",
 	}
@@ -94,7 +94,25 @@ func (client *Client) RunCode(ctx context.Context, code string, config *RunCodeC
 		Logs:    Logs{Stdout: []string{}, Stderr: []string{}},
 	}
 
-	scanner := bufio.NewScanner(resp.Body)
+	// Create a pipe to make the scanner cancellable
+	pipeReader, pipeWriter := io.Pipe()
+	
+	// Copy data from response body to pipe in a separate goroutine
+	go func() {
+		defer pipeWriter.Close()
+		_, err := io.Copy(pipeWriter, resp.Body)
+		if err != nil {
+			pipeWriter.CloseWithError(err)
+		}
+	}()
+	
+	// Monitor context cancellation in another goroutine
+	go func() {
+		<-ctx.Done()
+		pipeWriter.CloseWithError(ctx.Err())
+	}()
+	
+	scanner := bufio.NewScanner(pipeReader)
 	// Use configurable max buffer size for large results
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, config.MaxBufferSize)
@@ -169,7 +187,7 @@ func (client *Client) CreateCodeContext(ctx context.Context, config *CreateCodeC
 	config = config.loadDefault()
 
 	sandboxContextsURL := url.URL{
-		Scheme: "https",
+		Scheme: client.config.GetScheme(),
 		Host:   client.config.Domain,
 		Path:   "/contexts",
 	}

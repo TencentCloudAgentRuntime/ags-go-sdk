@@ -8,6 +8,14 @@ import (
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 )
 
+// SandboxConfig contains configuration parameters for sandbox instance creation.
+// This is a type alias for core.SandboxConfig.
+type SandboxConfig = core.SandboxConfig
+
+// MountOption contains configuration parameters for mounting storage in sandbox instance creation.
+// This is a type alias for core.MountOption.
+type MountOption = core.MountOption
+
 // #===================================================================================================================#
 // #                                                 CreateOption                                                      #
 // #===================================================================================================================#
@@ -49,6 +57,25 @@ type createOptionFunc func(*createConfig)
 
 func (f createOptionFunc) applyCreate(config *createConfig) {
 	f(config)
+}
+
+// WithSandboxTimeout sets the timeout for the sandbox instance lifecycle.
+// The timeout parameter should be a time.Duration (e.g., 300*time.Second, 5*time.Minute, 1*time.Hour).
+// This determines how long the sandbox instance will remain active before automatic termination.
+// Default timeout is 300s if not specified.
+func WithSandboxTimeout(timeout time.Duration) CreateOption {
+	return createOptionFunc(func(config *createConfig) {
+		config.coreCreateOptions = append(config.coreCreateOptions, core.WithSandboxTimeout(timeout))
+	})
+}
+
+// WithSandboxConfig sets the sandbox configuration including storage parameters and optional timeout.
+// This option allows specifying detailed configuration for the sandbox instance.
+// Note: This option is ignored if WithSandboxConfig is used and contains a timeout value.
+func WithSandboxConfig(sandboxConfig *SandboxConfig) CreateOption {
+	return createOptionFunc(func(config *createConfig) {
+		config.coreCreateOptions = append(config.coreCreateOptions, core.WithSandboxConfig(sandboxConfig))
+	})
 }
 
 // #===================================================================================================================#
@@ -199,13 +226,11 @@ func WithDataPlaneDomain(domain string) DataPlaneOption {
 	})
 }
 
-// WithSandboxTimeout sets the timeout for the sandbox instance lifecycle.
-// The timeout parameter should be a time.Duration (e.g., 300*time.Second, 5*time.Minute, 1*time.Hour).
-// This determines how long the sandbox instance will remain active before automatic termination.
-// Default timeout is 300s if not specified.
-func WithSandboxTimeout(timeout time.Duration) CreateOption {
-	return createOptionFunc(func(config *createConfig) {
-		config.coreCreateOptions = append(config.coreCreateOptions, core.WithSandboxTimeout(timeout))
+// WithScheme sets the URL scheme for data plane connections.
+// Supported values are "http" and "https". Default is "https".
+func WithScheme(scheme string) DataPlaneOption {
+	return dataPlaneOptionFunc(func(config *dataPlaneConfig) {
+		config.dataPlaneOptions = append(config.dataPlaneOptions, core.WithScheme(scheme))
 	})
 }
 

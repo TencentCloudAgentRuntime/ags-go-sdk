@@ -26,7 +26,7 @@ func newHttpClient(config *connection.Config) *http.Client {
 // newRpcClient creates a Process RPC client
 func newRpcClient(config *connection.Config) processconnect.ProcessClient {
 	httpClient := newHttpClient(config)
-	host := fmt.Sprintf("https://%v", config.Domain)
+	host := fmt.Sprintf("%v://%v", config.GetScheme(), config.Domain)
 	cli := processconnect.NewProcessClient(
 		httpClient, host, connect.WithProtoJSON(),
 	)

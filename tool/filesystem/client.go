@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 
 	"github.com/TencentCloudAgentRuntime/ags-go-sdk/connection"
@@ -66,7 +68,7 @@ func (client *Client) Read(ctx context.Context, path string, config *ReadConfig)
 		return nil, err
 	}
 	sandboxFileURL := url.URL{
-		Scheme: "https",
+		Scheme: client.config.GetScheme(),
 		Host:   client.config.Domain,
 		Path:   "/files",
 	}
@@ -117,7 +119,8 @@ func (client *Client) Write(ctx context.Context, path string, data io.Reader, co
 
 	var body bytes.Buffer
 	multipartWriter := multipart.NewWriter(&body)
-	part, err := multipartWriter.CreateFormFile("file", path)
+	// 使用自定义方法创建 form file，支持非 ASCII 文件名编码
+	part, err := createFormFileEncoded(multipartWriter, "file", path)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +134,7 @@ func (client *Client) Write(ctx context.Context, path string, data io.Reader, co
 	}
 
 	sandboxFileURL := url.URL{
-		Scheme: "https",
+		Scheme: client.config.GetScheme(),
 		Host:   client.config.Domain,
 		Path:   "/files",
 	}
@@ -351,4 +354,21 @@ func (client *Client) MakeDir(ctx context.Context, path string, opts *MakeDirCon
 		return false, fmt.Errorf("empty response from MakeDir")
 	}
 	return resp.Msg.Entry != nil, nil
+}
+
+// createFormFileEncoded creates a form file part with proper encoding for non-ASCII filenames
+// using RFC 5987 (filename*=UTF-8''...) format via mime.FormatMediaType
+func createFormFileEncoded(w *multipart.Writer, fieldname, filename string) (io.Writer, error) {
+	h := make(textproto.MIMEHeader)
+
+	// 使用 mime.FormatMediaType 自动处理非 ASCII 文件名编码
+	// 如果文件名包含非 ASCII 字符，会自动使用 filename*=utf-8''... 格式
+	disposition := mime.FormatMediaType("form-data", map[string]string{
+		"name":     fieldname,
+		"filename": filename,
+	})
+
+	h.Set("Content-Disposition", disposition)
+	h.Set("Content-Type", "application/octet-stream")
+	return w.CreatePart(h)
 }

@@ -164,6 +164,7 @@ func initializeClients(sandbox *Sandbox) error {
 			AccessToken: sandbox.ConnectionConfig.AccessToken,
 			Headers:     sandbox.ConnectionConfig.Headers,
 			Proxy:       sandbox.ConnectionConfig.Proxy,
+			Scheme:      sandbox.ConnectionConfig.Scheme,
 		})
 	if err != nil {
 		return err
@@ -176,6 +177,7 @@ func initializeClients(sandbox *Sandbox) error {
 		AccessToken: sandbox.ConnectionConfig.AccessToken,
 		Headers:     sandbox.ConnectionConfig.Headers,
 		Proxy:       sandbox.ConnectionConfig.Proxy,
+		Scheme:      sandbox.ConnectionConfig.Scheme,
 	})
 	if err != nil {
 		return err
@@ -188,6 +190,7 @@ func initializeClients(sandbox *Sandbox) error {
 		AccessToken: sandbox.ConnectionConfig.AccessToken,
 		Headers:     sandbox.ConnectionConfig.Headers,
 		Proxy:       sandbox.ConnectionConfig.Proxy,
+		Scheme:      sandbox.ConnectionConfig.Scheme,
 	})
 
 	return nil

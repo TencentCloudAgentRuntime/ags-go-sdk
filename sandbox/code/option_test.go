@@ -267,3 +267,218 @@ func TestWithDataPlaneDomain_CombinedWithSandboxTimeout(t *testing.T) {
 		t.Errorf("expected 1 core create option, got %d", len(config.coreCreateOptions))
 	}
 }
+
+func TestWithSandboxConfig_AppliesOption(t *testing.T) {
+	// Test that WithSandboxConfig applies to CreateOption
+	sandboxConfig := &SandboxConfig{
+		Timeout: stringPtr("10m"),
+	}
+
+	config := evaluateCreateOpts([]CreateOption{WithSandboxConfig(sandboxConfig)})
+	if len(config.coreCreateOptions) != 1 {
+		t.Errorf("expected 1 core create option, got %d", len(config.coreCreateOptions))
+	}
+}
+
+func TestWithSandboxConfig_CombinedWithOtherOptions(t *testing.T) {
+	// Test that WithSandboxConfig works correctly when combined with other options
+	sandboxConfig := &SandboxConfig{
+		Timeout: stringPtr("15m"),
+	}
+
+	config := evaluateCreateOpts([]CreateOption{
+		WithRegion("ap-shanghai"),
+		WithDataPlaneDomain("test.domain.com"),
+		WithSandboxConfig(sandboxConfig),
+	})
+
+	if len(config.clientOptions) != 1 {
+		t.Errorf("expected 1 client option, got %d", len(config.clientOptions))
+	}
+	if len(config.dataPlaneOptions) != 1 {
+		t.Errorf("expected 1 core contact option, got %d", len(config.dataPlaneOptions))
+	}
+	if len(config.coreCreateOptions) != 1 {
+		t.Errorf("expected 1 core create option, got %d", len(config.coreCreateOptions))
+	}
+}
+
+func TestWithSandboxConfig_COSMountOptions(t *testing.T) {
+	// Test that WithSandboxConfig correctly handles COS mount options
+	mountPath1 := "/cos/data"
+	mountPath2 := "/cos/logs"
+	readOnly1 := true
+	readOnly2 := false
+
+	// Create COS mount options
+	mountOptions := []*MountOption{
+		{
+			Name:      stringPtr("cos-data-mount"),
+			MountPath: &mountPath1,
+			ReadOnly:  &readOnly1,
+		},
+		{
+			Name:      stringPtr("cos-logs-mount"),
+			MountPath: &mountPath2,
+			ReadOnly:  &readOnly2,
+		},
+	}
+
+	sandboxConfig := &SandboxConfig{
+		MountOptions: mountOptions,
+	}
+
+	config := evaluateCreateOpts([]CreateOption{WithSandboxConfig(sandboxConfig)})
+
+	// Verify that the option was added to coreCreateOptions
+	if len(config.coreCreateOptions) != 1 {
+		t.Errorf("Expected 1 core create option, got %d", len(config.coreCreateOptions))
+	}
+	if config.coreCreateOptions == nil {
+		t.Fatal("Expected coreCreateOptions to be set")
+	}
+}
+
+func TestWithSandboxConfig_COSMountWithSubPath(t *testing.T) {
+	// Test COS mount options with subpath configuration
+	mountPath := "/cos/workspace"
+	subPath := "project/subdirectory"
+	readOnly := false
+
+	mountOptions := []*MountOption{
+		{
+			Name:      stringPtr("cos-workspace"),
+			MountPath: &mountPath,
+			SubPath:   &subPath,
+			ReadOnly:  &readOnly,
+		},
+	}
+
+	sandboxConfig := &SandboxConfig{
+		MountOptions: mountOptions,
+	}
+
+	config := evaluateCreateOpts([]CreateOption{WithSandboxConfig(sandboxConfig)})
+
+	// Verify that the option was added to coreCreateOptions
+	if len(config.coreCreateOptions) != 1 {
+		t.Errorf("Expected 1 core create option, got %d", len(config.coreCreateOptions))
+	}
+	if config.coreCreateOptions == nil {
+		t.Fatal("Expected coreCreateOptions to be set")
+	}
+}
+
+func TestWithSandboxConfig_EmptyCOSMountOptions(t *testing.T) {
+	// Test that empty COS mount options are handled correctly
+	sandboxConfig := &SandboxConfig{
+		MountOptions: []*MountOption{},
+	}
+
+	config := evaluateCreateOpts([]CreateOption{WithSandboxConfig(sandboxConfig)})
+
+	// Verify that the option was added to coreCreateOptions
+	if len(config.coreCreateOptions) != 1 {
+		t.Errorf("Expected 1 core create option, got %d", len(config.coreCreateOptions))
+	}
+	if config.coreCreateOptions == nil {
+		t.Fatal("Expected coreCreateOptions to be set")
+	}
+}
+
+func TestWithSandboxConfig_COSMountCombinedWithTimeout(t *testing.T) {
+	// Test COS mount options combined with timeout configuration
+	mountPath := "/cos/storage"
+	readOnly := true
+	timeout := "30m"
+
+	mountOptions := []*MountOption{
+		{
+			Name:      stringPtr("cos-storage"),
+			MountPath: &mountPath,
+			ReadOnly:  &readOnly,
+		},
+	}
+
+	sandboxConfig := &SandboxConfig{
+		Timeout:      &timeout,
+		MountOptions: mountOptions,
+	}
+
+	config := evaluateCreateOpts([]CreateOption{WithSandboxConfig(sandboxConfig)})
+
+	// Verify that the option was added to coreCreateOptions
+	if len(config.coreCreateOptions) != 1 {
+		t.Errorf("Expected 1 core create option, got %d", len(config.coreCreateOptions))
+	}
+	if config.coreCreateOptions == nil {
+		t.Fatal("Expected coreCreateOptions to be set")
+	}
+}
+
+// Tests for WithScheme functionality
+
+func TestWithScheme_AppliesOption(t *testing.T) {
+	// Test WithScheme applies to CreateOption
+	createConfig := evaluateCreateOpts([]CreateOption{WithScheme("http")})
+	if len(createConfig.dataPlaneOptions) != 1 {
+		t.Errorf("expected 1 data plane option, got %d", len(createConfig.dataPlaneOptions))
+	}
+
+	// Test WithScheme applies to ConnectOption
+	connectConfig := evaluateConnectOpts([]ConnectOption{WithScheme("http")})
+	if len(connectConfig.dataPlaneOptions) != 1 {
+		t.Errorf("expected 1 data plane option, got %d", len(connectConfig.dataPlaneOptions))
+	}
+}
+
+func TestWithScheme_ImplementsInterfaces(_ *testing.T) {
+	option := WithScheme("http")
+
+	var _ CreateOption = option
+	var _ ConnectOption = option
+	var _ DataPlaneOption = option
+}
+
+func TestWithScheme_CombinedWithDataPlaneDomain(t *testing.T) {
+	config := evaluateCreateOpts([]CreateOption{
+		WithDataPlaneDomain("test.domain.com"),
+		WithScheme("http"),
+	})
+
+	if len(config.dataPlaneOptions) != 2 {
+		t.Errorf("expected 2 data plane options, got %d", len(config.dataPlaneOptions))
+	}
+}
+
+func TestWithScheme_CombinedWithAllOptions(t *testing.T) {
+	config := evaluateCreateOpts([]CreateOption{
+		WithRegion("ap-shanghai"),
+		WithDataPlaneDomain("test.domain.com"),
+		WithScheme("http"),
+		WithSandboxTimeout(600),
+	})
+
+	if len(config.clientOptions) != 1 {
+		t.Errorf("expected 1 client option, got %d", len(config.clientOptions))
+	}
+	if len(config.dataPlaneOptions) != 2 {
+		t.Errorf("expected 2 data plane options, got %d", len(config.dataPlaneOptions))
+	}
+	if len(config.coreCreateOptions) != 1 {
+		t.Errorf("expected 1 core create option, got %d", len(config.coreCreateOptions))
+	}
+}
+
+func TestWithScheme_DoesNotApplyToListOrKill(_ *testing.T) {
+	// WithScheme should only implement CreateOption and ConnectOption
+	var _ CreateOption = WithScheme("http")
+	var _ ConnectOption = WithScheme("http")
+	// var _ ListOption = WithScheme("http")  // Should not compile
+	// var _ KillOption = WithScheme("http")  // Should not compile
+}
+
+// Helper function to create string pointers
+func stringPtr(s string) *string {
+	return &s
+}

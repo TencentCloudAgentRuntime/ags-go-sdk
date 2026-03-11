@@ -53,7 +53,7 @@ func newHttpRequestWithHeaders(ctx context.Context, method, url string, body io.
 // newRpcClient creates a Filesystem RPC client
 func newRpcClient(config *connection.Config) filesystemconnect.FilesystemClient {
 	httpClient := newHttpClient(config)
-	host := fmt.Sprintf("https://%v", config.Domain)
+	host := fmt.Sprintf("%v://%v", config.GetScheme(), config.Domain)
 	cli := filesystemconnect.NewFilesystemClient(
 		httpClient, host, connect.WithProtoJSON(),
 	)

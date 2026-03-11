@@ -13,6 +13,30 @@ const (
 	DefaultDataPlaneDomain = "tencentags.com"
 )
 
+// MountOption represents the storage mount configuration for a sandbox instance.
+// This type is defined independently from AGS SDK to avoid breaking changes
+// when the SDK updates its MountOption structure.
+type MountOption struct {
+	// Name is the storage name defined in StorageMount.Name when creating the sandbox tool.
+	Name *string
+	// MountPath is the mount point path in the sandbox instance, e.g., "/data/myname/cos".
+	// Only supports paths: /home, /workspace, /data, /mnt
+	MountPath *string
+	// SubPath is the sub-path within the storage bucket, used for tenant isolation, e.g., "my-user-1".
+	SubPath *string
+	// ReadOnly indicates whether the mount is read-only. true for read-only, false for read-write.
+	ReadOnly *bool
+}
+
+// SandboxConfig contains configuration parameters for sandbox instance creation
+type SandboxConfig struct {
+	// Timeout configuration - supports formats like "5m", "300s", "1h" (default: "5m")
+	Timeout *string
+
+	// Storage mount configurations
+	MountOptions []*MountOption
+}
+
 // #===================================================================================================================#
 // #                                                 ClientOption                                                      #
 // #===================================================================================================================#
@@ -94,6 +118,8 @@ type createConfig struct {
 	*dataPlaneConfig
 	// Sandbox instance timeout (default: 300s)
 	sandboxTimeout time.Duration
+	// Sandbox configuration (optional)
+	sandboxConfig *SandboxConfig
 }
 
 // evaluateCreateOpts evaluates the provided options and returns the configuration
@@ -110,6 +136,13 @@ func evaluateCreateOpts(options []CreateOption) *createConfig {
 
 	for _, option := range options {
 		option.applyCreate(config)
+	}
+
+	// If SandboxConfig is set and contains a timeout, override the sandboxTimeout
+	if config.sandboxConfig != nil && config.sandboxConfig.Timeout != nil {
+		if timeout, err := time.ParseDuration(*config.sandboxConfig.Timeout); err == nil {
+			config.sandboxTimeout = timeout
+		}
 	}
 
 	return config
@@ -131,9 +164,19 @@ func (f createOptionFunc) applyCreate(config *createConfig) {
 // The timeout parameter should be a time.Duration (e.g., 300*time.Second, 5*time.Minute, 1*time.Hour).
 // This determines how long the sandbox instance will remain active before automatic termination.
 // Default timeout is 300s if not specified.
+// Note: This option is ignored if WithSandboxConfig is used and contains a timeout value.
 func WithSandboxTimeout(timeout time.Duration) CreateOption {
 	return createOptionFunc(func(config *createConfig) {
 		config.sandboxTimeout = timeout
+	})
+}
+
+// WithSandboxConfig sets the sandbox configuration including storage parameters and optional timeout.
+// The config parameter should contain storage configuration for the sandbox instance.
+// If the config contains a timeout value, it will override any timeout set by WithSandboxTimeout.
+func WithSandboxConfig(config *SandboxConfig) CreateOption {
+	return createOptionFunc(func(createConfig *createConfig) {
+		createConfig.sandboxConfig = config
 	})
 }
 
@@ -177,6 +220,7 @@ type ConnectOption interface {
 // dataPlaneConfig is the config for contacting sandboxes. This is the data plane config.
 type dataPlaneConfig struct {
 	domain string
+	scheme string
 }
 
 // DataPlaneOption defines options for configuring domain, applicable to Create and Connect operations.
@@ -201,6 +245,14 @@ func (f dataPlaneOptionFunc) applyConnect(config *connectConfig) {
 func WithDataPlaneDomain(domain string) DataPlaneOption {
 	return dataPlaneOptionFunc(func(config *dataPlaneConfig) {
 		config.domain = domain
+	})
+}
+
+// WithScheme sets the URL scheme for data plane connections.
+// Supported values are "http" and "https". Default is "https".
+func WithScheme(scheme string) DataPlaneOption {
+	return dataPlaneOptionFunc(func(config *dataPlaneConfig) {
+		config.scheme = scheme
 	})
 }
 

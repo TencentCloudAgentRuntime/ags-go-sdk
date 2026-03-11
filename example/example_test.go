@@ -3,6 +3,7 @@ package example_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -414,5 +415,156 @@ func Example_core_ops() {
 		log.Fatal(err)
 	}
 	defer coreOnly.Kill(ctx)
+	// Output:
+}
+
+// 6. 创建沙箱实例时，挂载沙箱工具内所描述的COS存储路径的subpath的示例
+//
+// MountOption使用说明:
+// - Name: 存储名称，创建沙箱工具时定义的StorageMount.Name
+// - MountPath: 挂载路径，在沙箱实例内的挂载点路径，如 "/data/myname/cos"。仅支持以下路径/home, /workspace, /data, /mnt
+// - SubPath: 子路径，存储桶内的子路径，可用于隔离不同租户，如 "my-user-1"
+// - ReadOnly: 是否只读，true为只读，false为可读写
+//
+// 环境变量配置:
+// - TENCENTCLOUD_SECRET_ID: 腾讯云API密钥ID
+// - TENCENTCLOUD_SECRET_KEY: 腾讯云API密钥Key
+// - AGS_REGION: 区域，如 "ap-guangzhou"
+// - AGS_TOOL_NAME: 工具名称，如 "code-interpreter-with-cos"
+// - AGS_STORAGE_NAME: COS存储桶名称（必选，只有设置了该变量才会创建mountOptions）
+// - AGS_MOUNT_PATH: 挂载路径，如 "/data/myname/cos"（可选）
+// - AGS_SUB_PATH: 子路径，如 "my-user-1"（可选）
+// - AGS_READ_ONLY: 是否只读，true或false（可选）
+func Example_cosMount() {
+	ctx := context.Background()
+
+	// Create credential from environment variables
+	cred := &common.Credential{
+		SecretId:  os.Getenv("TENCENTCLOUD_SECRET_ID"),
+		SecretKey: os.Getenv("TENCENTCLOUD_SECRET_KEY"),
+	}
+
+	// Get region from environment variable, default to "ap-guangzhou"
+	region := os.Getenv("AGS_REGION")
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+
+	cpf := profile.NewClientProfile()
+	cpf.HttpProfile.Endpoint = "ags.tencentcloudapi.com"
+	client, err := ags.NewClient(cred, region, cpf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Get tool name from environment variable, default to "code-interpreter-v1"
+	toolName := os.Getenv("AGS_TOOL_NAME")
+	if toolName == "" {
+		log.Fatal("AGS_TOOL_NAME environment variable is required")
+	}
+
+	// Get storage configuration from environment variables
+	var mountOptions []*sandboxcode.MountOption
+	var mountPath string
+	storageName := os.Getenv("AGS_STORAGE_NAME")
+
+	// Only create mount options if storage name is set
+	if storageName != "" {
+		mountOption := &sandboxcode.MountOption{
+			Name: &storageName,
+		}
+
+		// Add mount path if set
+		mountPath = os.Getenv("AGS_MOUNT_PATH")
+		if mountPath != "" {
+			mountOption.MountPath = &mountPath
+		}
+
+		// Add sub path if set
+		subPath := os.Getenv("AGS_SUB_PATH")
+		if subPath != "" {
+			mountOption.SubPath = &subPath
+		}
+
+		// Add read only option if set
+		readOnlyStr := os.Getenv("AGS_READ_ONLY")
+		if readOnlyStr != "" {
+			readOnly := readOnlyStr == "true"
+			mountOption.ReadOnly = &readOnly
+		}
+
+		mountOptions = append(mountOptions, mountOption)
+		log.Println("COS mount options configured successfully")
+	} else {
+		log.Println("AGS_STORAGE_NAME environment variable is not set, skipping COS mount")
+	}
+
+	// Create sandbox configuration with mount options
+	timeout := "10m"
+	sandboxConfig := &sandboxcode.SandboxConfig{
+		Timeout:      &timeout,
+		MountOptions: mountOptions,
+	}
+
+	// Create sandbox instance with COS mount
+	sandbox, err := sandboxcode.Create(ctx, toolName,
+		sandboxcode.WithClient(client),
+		sandboxcode.WithSandboxConfig(sandboxConfig),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sandbox.Kill(ctx)
+
+	log.Println("Successfully created sandbox instance with ID:", sandbox.SandboxId)
+
+	// Only write to COS mount if mountPath is set
+	if mountPath != "" {
+		// Write file to COS mount path
+		fileContent := "hello from hongxinchu"
+		filePath := fmt.Sprintf("%s/test_file.txt", mountPath)
+
+		cmd := fmt.Sprintf("echo '%s' > %s", fileContent, filePath)
+
+		log.Println("Writing file command:", cmd)
+
+		// Execute the command to write file to COS mounted path
+		result, err := sandbox.Commands.Run(ctx, cmd, &command.ProcessConfig{
+			User: "root",
+		}, nil)
+		if err != nil {
+			log.Fatal("Failed to execute command:", err)
+		}
+
+		log.Printf("Command executed successfully. Exit code: %d", result.ExitCode)
+		if len(result.Stdout) > 0 {
+			log.Printf("Stdout: %s", string(result.Stdout))
+		}
+		if len(result.Stderr) > 0 {
+			log.Printf("Stderr: %s", string(result.Stderr))
+		}
+
+		// Verify the file was created by reading it back
+		reader, err := sandbox.Files.Read(ctx, filePath, nil)
+		if err != nil {
+			log.Fatal("Failed to read file:", err)
+		}
+		defer func() {
+			if closer, ok := reader.(io.Closer); ok {
+				closer.Close()
+			}
+		}()
+
+		// Read the file content
+		buf := make([]byte, 1024)
+		n, err := reader.Read(buf)
+		if err != nil {
+			log.Fatal("Failed to read file content:", err)
+		}
+
+		log.Printf("File content verified: %s", string(buf[:n]))
+	}
+	log.Println("Sandbox operation completed successfully!")
+
 	// Output:
 }

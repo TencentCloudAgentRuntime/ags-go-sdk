@@ -39,10 +39,21 @@ func Create(ctx context.Context, toolName string, opts ...CreateOption) (*Core, 
 	}
 
 	timeoutString := config.sandboxTimeout.String()
-	startResponse, err := client.StartSandboxInstanceWithContext(ctx, &ags.StartSandboxInstanceRequest{
+
+	// Build StartSandboxInstanceRequest with full SandboxConfig parameters
+	request := &ags.StartSandboxInstanceRequest{
 		ToolName: &toolName,
 		Timeout:  &timeoutString,
-	})
+	}
+
+	if config.sandboxConfig != nil {
+		// Add MountOptions if configured
+		if config.sandboxConfig.MountOptions != nil {
+			request.MountOptions = convertMountOptions(config.sandboxConfig.MountOptions)
+		}
+	}
+
+	startResponse, err := client.StartSandboxInstanceWithContext(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +61,7 @@ func Create(ctx context.Context, toolName string, opts ...CreateOption) (*Core, 
 		return nil, fmt.Errorf("StartSandboxInstance response.Response is nil")
 	}
 	if startResponse.Response.Instance == nil {
-		return nil, fmt.Errorf("StartSandboxInstance response.Response.Instance is nil")
+		return nil, fmt.Errorf("StartSandboxInstance response.Response.Instance is nil. Response: %+v", startResponse.Response)
 	}
 	if startResponse.Response.Instance.InstanceId == nil {
 		return nil, fmt.Errorf("StartSandboxInstance response.Response.Instance.InstanceId is nil")
@@ -72,6 +83,7 @@ func Create(ctx context.Context, toolName string, opts ...CreateOption) (*Core, 
 	return NewCore(client, *startResponse.Response.Instance.InstanceId, &connection.Config{
 		Domain:      fmt.Sprintf("%v.%v", client.GetRegion(), config.domain),
 		AccessToken: *tokenResponse.Response.Token,
+		Scheme:      config.scheme,
 	}), nil
 }
 
@@ -120,6 +132,7 @@ func Connect(ctx context.Context, sandboxId string, opts ...ConnectOption) (*Cor
 	return NewCore(client, sandboxId, &connection.Config{
 		Domain:      fmt.Sprintf("%v.%v", client.GetRegion(), cfg.domain),
 		AccessToken: *token.Response.Token,
+		Scheme:      cfg.scheme,
 	}), nil
 }
 
@@ -205,12 +218,37 @@ func initializeClient(cfg *clientConfig) (*ags.Client, error) {
 	if cfg.credential != nil && cfg.region != "" {
 		cpf := profile.NewClientProfile()
 		cpf.HttpProfile.Endpoint = constant.AgentSandboxInternalEndpoint
+
 		client, err := ags.NewClient(cfg.credential, cfg.region, cpf)
 		if err != nil {
 			return nil, err
 		}
+
 		return client, nil
 	}
 
 	return nil, fmt.Errorf("client cannot be initialized. Make sure you have provided a valid client, or a credential and region pair")
+}
+
+// convertMountOptions converts our MountOption to AGS SDK MountOption
+func convertMountOptions(options []*MountOption) []*ags.MountOption {
+	if len(options) == 0 {
+		return nil
+	}
+
+	agsOptions := make([]*ags.MountOption, 0, len(options))
+	for _, opt := range options {
+		if opt == nil {
+			continue
+		}
+		agsOpt := &ags.MountOption{
+			Name:      opt.Name,
+			MountPath: opt.MountPath,
+			SubPath:   opt.SubPath,
+			ReadOnly:  opt.ReadOnly,
+		}
+		agsOptions = append(agsOptions, agsOpt)
+	}
+
+	return agsOptions
 }
