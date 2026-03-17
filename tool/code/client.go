@@ -96,7 +96,9 @@ func (client *Client) RunCode(ctx context.Context, code string, config *RunCodeC
 
 	// Create a pipe to make the scanner cancellable
 	pipeReader, pipeWriter := io.Pipe()
-	
+	done := make(chan struct{})
+	defer close(done)
+
 	// Copy data from response body to pipe in a separate goroutine
 	go func() {
 		defer pipeWriter.Close()
@@ -105,11 +107,16 @@ func (client *Client) RunCode(ctx context.Context, code string, config *RunCodeC
 			pipeWriter.CloseWithError(err)
 		}
 	}()
-	
+
 	// Monitor context cancellation in another goroutine
 	go func() {
-		<-ctx.Done()
-		pipeWriter.CloseWithError(ctx.Err())
+		select {
+		case <-ctx.Done():
+			pipeWriter.CloseWithError(ctx.Err())
+		case <-done:
+			// RunCode finished normally, exit goroutine
+			return
+		}
 	}()
 	
 	scanner := bufio.NewScanner(pipeReader)
