@@ -61,7 +61,11 @@ func buildProcessConfig(cmd string, config *ProcessConfig) *process.ProcessConfi
 			pc.Cwd = config.Cwd
 		}
 		if len(config.Args) > 0 {
-			pc.Args = append(pc.Args, config.Args...)
+			// When explicit args are provided, use cmd as the executable directly
+			// instead of wrapping it through /bin/bash -c, to avoid argument
+			// misinterpretation (e.g. "bash" + ["-lc", "ls /"] would hang).
+			pc.Cmd = cmd
+			pc.Args = config.Args
 		}
 	}
 	return pc
