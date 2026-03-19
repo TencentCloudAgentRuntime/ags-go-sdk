@@ -421,33 +421,33 @@ func Example_core_ops() {
 // 6. 创建沙箱实例时，挂载沙箱工具内所描述的COS存储路径的subpath的示例
 //
 // MountOption使用说明:
-// - Name: 存储名称，创建沙箱工具时定义的StorageMount.Name
-// - MountPath: 挂载路径，在沙箱实例内的挂载点路径，如 "/data/myname/cos"。仅支持以下路径/home, /workspace, /data, /mnt
-// - SubPath: 子路径，存储桶内的子路径，可用于隔离不同租户，如 "my-user-1"
-// - ReadOnly: 是否只读，true为只读，false为可读写
+//   - Name: 存储名称，创建沙箱工具时在 StorageMount.Name 中定义的名称
+//   - MountPath: 挂载路径，在沙箱实例内的挂载点路径，如 "/home/user/workspace"。
+//   - SubPath: 子路径，存储桶内的子路径，可用于不同租户隔离，如 "user-123"
+//   - ReadOnly: 是否只读，true 为只读，false 为可读写（默认 false）
 //
-// 环境变量配置:
-// - TENCENTCLOUD_SECRET_ID: 腾讯云API密钥ID
-// - TENCENTCLOUD_SECRET_KEY: 腾讯云API密钥Key
-// - AGS_REGION: 区域，如 "ap-guangzhou"
-// - AGS_TOOL_NAME: 工具名称，如 "code-interpreter-with-cos"
-// - AGS_STORAGE_NAME: COS存储桶名称（必选，只有设置了该变量才会创建mountOptions）
-// - AGS_MOUNT_PATH: 挂载路径，如 "/data/myname/cos"（可选）
-// - AGS_SUB_PATH: 子路径，如 "my-user-1"（可选）
-// - AGS_READ_ONLY: 是否只读，true或false（可选）
+// 环境变量配置（优先级高于代码内默认值）:
+//   - TENCENTCLOUD_SECRET_ID: 腾讯云 API 密钥 ID
+//   - TENCENTCLOUD_SECRET_KEY: 腾讯云 API 密钥 Key
+//   - AGS_REGION: 地域，默认 "ap-chongqing"
+//   - AGS_TOOL_NAME: 工具名称，默认 "code-cos-test"
+//   - AGS_STORAGE_NAME: 挂载名称（MountOption.Name），默认 "cos"
+//   - AGS_MOUNT_PATH: 沙箱内挂载路径，默认 "/data/cos"
+//   - AGS_SUB_PATH: 存储桶内子路径（可选）
+//   - AGS_READ_ONLY: 是否只读，"true" 或 "false"，默认 "false"
 func Example_cosMount() {
 	ctx := context.Background()
 
-	// Create credential from environment variables
+	// 从环境变量读取腾讯云 API 密钥
 	cred := &common.Credential{
 		SecretId:  os.Getenv("TENCENTCLOUD_SECRET_ID"),
 		SecretKey: os.Getenv("TENCENTCLOUD_SECRET_KEY"),
 	}
 
-	// Get region from environment variable, default to "ap-guangzhou"
+	// 地域：优先使用环境变量，默认 ap-chongqing
 	region := os.Getenv("AGS_REGION")
 	if region == "" {
-		region = "ap-guangzhou"
+		region = "ap-chongqing"
 	}
 
 	cpf := profile.NewClientProfile()
@@ -457,56 +457,53 @@ func Example_cosMount() {
 		log.Fatal(err)
 	}
 
-	// Get tool name from environment variable, default to "code-interpreter-v1"
+	// 工具名称：优先使用环境变量，默认 code-cos-test
 	toolName := os.Getenv("AGS_TOOL_NAME")
 	if toolName == "" {
-		log.Fatal("AGS_TOOL_NAME environment variable is required")
+		toolName = "code-cos-test"
 	}
 
-	// Get storage configuration from environment variables
-	var mountOptions []*sandboxcode.MountOption
-	var mountPath string
+	// 挂载名称（对应工具定义中的 StorageMount.Name）：默认 cos
 	storageName := os.Getenv("AGS_STORAGE_NAME")
-
-	// Only create mount options if storage name is set
-	if storageName != "" {
-		mountOption := &sandboxcode.MountOption{
-			Name: &storageName,
-		}
-
-		// Add mount path if set
-		mountPath = os.Getenv("AGS_MOUNT_PATH")
-		if mountPath != "" {
-			mountOption.MountPath = &mountPath
-		}
-
-		// Add sub path if set
-		subPath := os.Getenv("AGS_SUB_PATH")
-		if subPath != "" {
-			mountOption.SubPath = &subPath
-		}
-
-		// Add read only option if set
-		readOnlyStr := os.Getenv("AGS_READ_ONLY")
-		if readOnlyStr != "" {
-			readOnly := readOnlyStr == "true"
-			mountOption.ReadOnly = &readOnly
-		}
-
-		mountOptions = append(mountOptions, mountOption)
-		log.Println("COS mount options configured successfully")
-	} else {
-		log.Println("AGS_STORAGE_NAME environment variable is not set, skipping COS mount")
+	if storageName == "" {
+		storageName = "cos"
 	}
 
-	// Create sandbox configuration with mount options
+	// 沙箱内挂载路径：默认 /data/cos
+	mountPath := os.Getenv("AGS_MOUNT_PATH")
+	if mountPath == "" {
+		mountPath = "/data/cos"
+	}
+
+	// 构造 MountOption
+	mountOption := &sandboxcode.MountOption{
+		// Name 对应创建沙箱工具时配置的 StorageMount.Name
+		Name: &storageName,
+		// MountPath 指定 COS 在沙箱实例内的挂载点，仅支持 /home、/workspace、/data、/mnt 前缀
+		MountPath: &mountPath,
+	}
+
+	// SubPath：存储桶内子路径，用于多租户隔离（可选）
+	if subPath := os.Getenv("AGS_SUB_PATH"); subPath != "" {
+		mountOption.SubPath = &subPath
+	}
+
+	// ReadOnly：是否只读（可选，默认 false 即可读写）
+	readOnly := os.Getenv("AGS_READ_ONLY") == "true"
+	mountOption.ReadOnly = &readOnly
+
+	log.Printf("MountOption: Name=%s, MountPath=%s, ReadOnly=%v", storageName, mountPath, readOnly)
+
+	// 组装沙箱配置
 	timeout := "10m"
 	sandboxConfig := &sandboxcode.SandboxConfig{
-		Timeout:      &timeout,
-		MountOptions: mountOptions,
+		Timeout: &timeout,
+		MountOptions: []*sandboxcode.MountOption{
+			mountOption,
+		},
 	}
 
-	// Create sandbox instance with COS mount
+	// 创建携带 COS 挂载的沙箱实例
 	sandbox, err := sandboxcode.Create(ctx, toolName,
 		sandboxcode.WithClient(client),
 		sandboxcode.WithSandboxConfig(sandboxConfig),
@@ -514,57 +511,42 @@ func Example_cosMount() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer sandbox.Kill(ctx)
+	defer func() { _ = sandbox.Kill(ctx) }()
 
-	log.Println("Successfully created sandbox instance with ID:", sandbox.SandboxId)
+	log.Println("Successfully created sandbox with ID:", sandbox.SandboxId)
 
-	// Only write to COS mount if mountPath is set
-	if mountPath != "" {
-		// Write file to COS mount path
-		fileContent := "hello from hongxinchu"
-		filePath := fmt.Sprintf("%s/test_file.txt", mountPath)
-
-		cmd := fmt.Sprintf("echo '%s' > %s", fileContent, filePath)
-
-		log.Println("Writing file command:", cmd)
-
-		// Execute the command to write file to COS mounted path
-		result, err := sandbox.Commands.Run(ctx, cmd, &command.ProcessConfig{
-			User: "root",
-		}, nil)
-		if err != nil {
-			log.Fatal("Failed to execute command:", err)
-		}
-
-		log.Printf("Command executed successfully. Exit code: %d", result.ExitCode)
-		if len(result.Stdout) > 0 {
-			log.Printf("Stdout: %s", string(result.Stdout))
-		}
-		if len(result.Stderr) > 0 {
-			log.Printf("Stderr: %s", string(result.Stderr))
-		}
-
-		// Verify the file was created by reading it back
-		reader, err := sandbox.Files.Read(ctx, filePath, nil)
-		if err != nil {
-			log.Fatal("Failed to read file:", err)
-		}
-		defer func() {
-			if closer, ok := reader.(io.Closer); ok {
-				closer.Close()
-			}
-		}()
-
-		// Read the file content
-		buf := make([]byte, 1024)
-		n, err := reader.Read(buf)
-		if err != nil {
-			log.Fatal("Failed to read file content:", err)
-		}
-
-		log.Printf("File content verified: %s", string(buf[:n]))
+	// 向 COS 挂载路径写入文件（通过 Files 客户端）
+	testFilePath := fmt.Sprintf("%s/test_file.txt", mountPath)
+	fileContent := "hello from ags-go-sdk MountOption example"
+	_, err = sandbox.Files.Write(ctx, testFilePath, bytes.NewBufferString(fileContent), nil)
+	if err != nil {
+		log.Fatal("Failed to write file to COS mount:", err)
 	}
-	log.Println("Sandbox operation completed successfully!")
+	log.Println("File written to COS mount:", testFilePath)
 
+	// 从 COS 挂载路径读取文件，验证写入内容
+	reader, err := sandbox.Files.Read(ctx, testFilePath, nil)
+	if err != nil {
+		log.Fatal("Failed to read file from COS mount:", err)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		log.Fatal("Failed to read file content:", err)
+	}
+	log.Printf("File content read back: %s", string(data))
+
+	// 通过命令行列出挂载目录，验证 COS 挂载是否生效
+	result, err := sandbox.Commands.Run(ctx, fmt.Sprintf("ls -la %s", mountPath), &command.ProcessConfig{
+		User: "root",
+	}, &command.OnOutputConfig{
+		OnStdout: func(b []byte) { log.Printf("ls stdout: %s", string(b)) },
+		OnStderr: func(b []byte) { log.Printf("ls stderr: %s", string(b)) },
+	})
+	if err != nil {
+		log.Fatal("Failed to list mount directory:", err)
+	}
+	log.Printf("ls exit code: %d", result.ExitCode)
+
+	log.Println("COS mount example completed successfully!")
 	// Output:
 }
