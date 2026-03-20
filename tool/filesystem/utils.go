@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/TencentCloudAgentRuntime/ags-go-sdk/connection"
@@ -118,4 +119,38 @@ func mapEntryInfo(p *filesystem.EntryInfo) *EntryInfo {
 		out.SymlinkTarget = &st
 	}
 	return out
+}
+
+// isASCII reports whether s contains only ASCII characters.
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] > 127 {
+			return false
+		}
+	}
+	return true
+}
+
+// percentEncodeRFC5987 encodes a string according to RFC 5987 (attr-char).
+// Only unreserved characters (ALPHA / DIGIT / "!" / "#" / "$" / "&" / "+" /
+// "-" / "." / "^" / "_" / "`" / "|" / "~") are left unencoded;
+// everything else (including "{", "}", "%", etc.) is percent-encoded.
+func percentEncodeRFC5987(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) * 3) // worst-case: every byte is encoded
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		// attr-char unreserved set from RFC 5987 §3.2.1
+		if (c >= 'A' && c <= 'Z') ||
+			(c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '!' || c == '#' || c == '$' || c == '&' ||
+			c == '+' || c == '-' || c == '.' || c == '^' ||
+			c == '_' || c == '`' || c == '|' || c == '~' {
+			b.WriteByte(c)
+		} else {
+			fmt.Fprintf(&b, "%%%02X", c)
+		}
+	}
+	return b.String()
 }

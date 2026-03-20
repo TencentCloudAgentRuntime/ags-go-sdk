@@ -118,7 +118,7 @@ func (client *Client) RunCode(ctx context.Context, code string, config *RunCodeC
 			return
 		}
 	}()
-	
+
 	scanner := bufio.NewScanner(pipeReader)
 	// Use configurable max buffer size for large results
 	buf := make([]byte, 0, 64*1024)

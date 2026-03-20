@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"strings"
 
 	"github.com/TencentCloudAgentRuntime/ags-go-sdk/connection"
 	"github.com/TencentCloudAgentRuntime/ags-go-sdk/pb/filesystem/filesystemconnect"
@@ -356,17 +356,43 @@ func (client *Client) MakeDir(ctx context.Context, path string, opts *MakeDirCon
 	return resp.Msg.Entry != nil, nil
 }
 
-// createFormFileEncoded creates a form file part with proper encoding for non-ASCII filenames
-// using RFC 5987 (filename*=UTF-8''...) format via mime.FormatMediaType
+// createFormFileEncoded creates a form file part with proper encoding for non-ASCII filenames.
+//
+// When the filename is pure ASCII, it uses a simple quoted `filename="..."` parameter.
+// When the filename contains non-ASCII characters, it emits both `filename` (with ASCII
+// fallback) and `filename*` (RFC 5987 UTF-8 percent-encoded) to maximize server compatibility.
+//
+// This replaces the previous implementation that relied on mime.FormatMediaType, which had a
+// known round-trip issue: characters like '{' and '}' were not percent-encoded in the
+// filename* value, causing mime.ParseMediaType on the server side to fail with
+// "mime: invalid media parameter" when the filename contained both non-ASCII characters
+// and curly braces.
 func createFormFileEncoded(w *multipart.Writer, fieldname, filename string) (io.Writer, error) {
 	h := make(textproto.MIMEHeader)
 
-	// 使用 mime.FormatMediaType 自动处理非 ASCII 文件名编码
-	// 如果文件名包含非 ASCII 字符，会自动使用 filename*=utf-8''... 格式
-	disposition := mime.FormatMediaType("form-data", map[string]string{
-		"name":     fieldname,
-		"filename": filename,
-	})
+	var disposition string
+	if isASCII(filename) {
+		// Pure ASCII: use simple quoted filename parameter.
+		// Escape any backslash or double-quote in the value.
+		escaped := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(filename)
+		disposition = fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fieldname, escaped)
+	} else {
+		// Non-ASCII: emit both filename (ASCII fallback) and filename* (RFC 5987).
+		// The ASCII fallback replaces non-ASCII bytes with underscores so that servers
+		// which do not support RFC 5987 still receive a usable (if degraded) name.
+		var asciiFallback strings.Builder
+		for i := 0; i < len(filename); i++ {
+			if filename[i] > 127 {
+				asciiFallback.WriteByte('_')
+			} else {
+				asciiFallback.WriteByte(filename[i])
+			}
+		}
+		escapedFallback := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(asciiFallback.String())
+		encoded := percentEncodeRFC5987(filename)
+		disposition = fmt.Sprintf(`form-data; name="%s"; filename="%s"; filename*=UTF-8''%s`,
+			fieldname, escapedFallback, encoded)
+	}
 
 	h.Set("Content-Disposition", disposition)
 	h.Set("Content-Type", "application/octet-stream")
