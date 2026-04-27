@@ -1,5 +1,7 @@
 # Agent Sandbox Go SDK
 
+> **Verification branch — `verify/sh-shell`.** This branch / the `v0.1.6-verify.1` tag replaces the command wrapper from `/bin/bash -l -c` to `/bin/sh -c` so executed commands no longer source login-shell profiles. It exists to validate the change before merging into `main`. Do not depend on it in production.
+
 Go SDK for Tencent Cloud Agent Sandbox, providing:
 - Sandbox lifecycle management (create, connect, list, destroy)
 - Remote code execution and context management (tool/code)

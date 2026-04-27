@@ -52,8 +52,8 @@ func newRequestWithHeaders[T any](message *T, config *connection.Config) *connec
 // buildProcessConfig builds a ProcessConfig for the command
 func buildProcessConfig(cmd string, config *ProcessConfig) *process.ProcessConfig {
 	pc := &process.ProcessConfig{
-		Cmd:  "/bin/bash",
-		Args: []string{"-l", "-c", cmd},
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", cmd},
 	}
 	if config != nil {
 		if config.Envs != nil {
@@ -64,7 +64,7 @@ func buildProcessConfig(cmd string, config *ProcessConfig) *process.ProcessConfi
 		}
 		if len(config.Args) > 0 {
 			// When explicit args are provided, use cmd as the executable directly
-			// instead of wrapping it through /bin/bash -c, to avoid argument
+			// instead of wrapping it through /bin/sh -c, to avoid argument
 			// misinterpretation (e.g. "bash" + ["-lc", "ls /"] would hang).
 			pc.Cmd = cmd
 			pc.Args = config.Args

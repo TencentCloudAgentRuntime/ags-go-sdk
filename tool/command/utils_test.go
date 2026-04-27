@@ -5,13 +5,13 @@ import (
 )
 
 func TestBuildProcessConfig_DefaultShellWrap(t *testing.T) {
-	// When no config is provided, cmd should be wrapped through /bin/bash -c
+	// When no config is provided, cmd should be wrapped through /bin/sh -c
 	pc := buildProcessConfig("ls /", nil)
 
-	if pc.Cmd != "/bin/bash" {
-		t.Errorf("expected Cmd = /bin/bash, got %q", pc.Cmd)
+	if pc.Cmd != "/bin/sh" {
+		t.Errorf("expected Cmd = /bin/sh, got %q", pc.Cmd)
 	}
-	expectedArgs := []string{"-l", "-c", "ls /"}
+	expectedArgs := []string{"-c", "ls /"}
 	if len(pc.Args) != len(expectedArgs) {
 		t.Fatalf("expected %d args, got %d: %v", len(expectedArgs), len(pc.Args), pc.Args)
 	}
@@ -23,13 +23,13 @@ func TestBuildProcessConfig_DefaultShellWrap(t *testing.T) {
 }
 
 func TestBuildProcessConfig_EmptyArgs_StillWrapsWithBash(t *testing.T) {
-	// When config is provided but Args is empty, should still use /bin/bash -c
+	// When config is provided but Args is empty, should still use /bin/sh -c
 	pc := buildProcessConfig("echo hello", &ProcessConfig{})
 
-	if pc.Cmd != "/bin/bash" {
-		t.Errorf("expected Cmd = /bin/bash, got %q", pc.Cmd)
+	if pc.Cmd != "/bin/sh" {
+		t.Errorf("expected Cmd = /bin/sh, got %q", pc.Cmd)
 	}
-	expectedArgs := []string{"-l", "-c", "echo hello"}
+	expectedArgs := []string{"-c", "echo hello"}
 	if len(pc.Args) != len(expectedArgs) {
 		t.Fatalf("expected %d args, got %d: %v", len(expectedArgs), len(pc.Args), pc.Args)
 	}
@@ -42,8 +42,8 @@ func TestBuildProcessConfig_EmptyArgs_StillWrapsWithBash(t *testing.T) {
 
 func TestBuildProcessConfig_WithArgs_UsesCmdDirectly(t *testing.T) {
 	// This is the fix scenario: when Args are provided, cmd should be used as
-	// the executable directly, not wrapped through /bin/bash -c.
-	// Previously this would produce: /bin/bash [-l -c bash -lc "ls /"] which hangs.
+	// the executable directly, not wrapped through /bin/sh -c.
+	// Previously this would produce: /bin/sh [-c bash -lc "ls /"] which hangs.
 	pc := buildProcessConfig("bash", &ProcessConfig{
 		Args: []string{"-lc", "ls /"},
 	})
@@ -99,10 +99,10 @@ func TestBuildProcessConfig_NoArgs_EnvsAndCwd(t *testing.T) {
 		Cwd:  &cwd,
 	})
 
-	if pc.Cmd != "/bin/bash" {
-		t.Errorf("expected Cmd = /bin/bash, got %q", pc.Cmd)
+	if pc.Cmd != "/bin/sh" {
+		t.Errorf("expected Cmd = /bin/sh, got %q", pc.Cmd)
 	}
-	expectedArgs := []string{"-l", "-c", "make build"}
+	expectedArgs := []string{"-c", "make build"}
 	if len(pc.Args) != len(expectedArgs) {
 		t.Fatalf("expected %d args, got %d: %v", len(expectedArgs), len(pc.Args), pc.Args)
 	}

@@ -1,5 +1,7 @@
 # Agent Sandbox Go SDK
 
+> **验证分支 —— `verify/sh-shell`。** 本分支及 `v0.1.6-verify.1` tag 将命令包装从 `/bin/bash -l -c` 改为 `/bin/sh -c`，避免每次执行命令都加载 login shell 配置。仅用于验证该改动，未合入 `main`，请勿在生产环境依赖。
+
 面向腾讯云 Agent Sandbox 的 Go 语言 SDK，提供：
 - 沙箱生命周期管理（创建、连接、列出、销毁）
 - 远程代码执行与上下文管理（tool/code）
