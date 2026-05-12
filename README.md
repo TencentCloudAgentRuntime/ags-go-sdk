@@ -10,6 +10,7 @@ Go SDK for Tencent Cloud Agent Sandbox, providing:
 
 - Usage examples: [docs/examples.md](docs/examples.md)
 - SDK reference: [docs/sdk-reference.md](docs/sdk-reference.md)
+- Error handling: [docs/error-handling.md](docs/error-handling.md)
 
 ## Table of Contents
 
