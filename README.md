@@ -103,7 +103,7 @@ For more examples and advanced usage, please refer to:
 
 - Tencent Cloud account with Agent Sandbox access
 - Available Region (example uses ap-guangzhou)
-- Go 1.20+ (recommended)
+- Go 1.22+ (recommended)
 
 ## Environment Variables
 

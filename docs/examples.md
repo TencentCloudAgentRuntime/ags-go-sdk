@@ -5,7 +5,7 @@ This page provides common examples from scratch: how to create sandboxes, execut
 ## Prerequisites
 
 - Tencent Cloud account with Agent Sandbox access
-- Go 1.20+
+- Go 1.22+
 - Credentials configured (SDK Client initialization recommended)
 
 ## Import Path Conventions
