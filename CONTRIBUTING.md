@@ -25,7 +25,7 @@ make tools
 ### Clone Repository
 
 ```bash
-git clone github.com/TencentCloudAgentRuntime/ags-go-sdk.git
+git clone https://github.com/TencentCloudAgentRuntime/ags-go-sdk.git
 cd ags-go-sdk
 ```
 
