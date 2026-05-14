@@ -8,24 +8,24 @@
 
 ## 文档
 
-- 使用示例：[docs/examples.md](docs/examples.md)
-- SDK 参考：[docs/sdk-reference.md](docs/sdk-reference.md)
+- 使用示例：[docs/examples-zh.md](docs/examples-zh.md)
+- SDK 参考：[docs/sdk-reference-zh.md](docs/sdk-reference-zh.md)
 
 ## 目录
 
 - **代码沙箱 (sandbox/code)**
-  - [沙箱创建](docs/examples.md#1-创建代码沙箱并获取三大客户端)
-  - [代码执行](docs/examples.md#2-运行代码python-等)
-  - [文件操作](docs/examples.md#3-文件系统操作读写列查删改名建目录)
-  - [终端命令执行](docs/examples.md#4-命令进程管理前台后台输入信号进程列表)
-  - [沙箱管理](docs/examples.md#5-代码沙箱列表和管理)
+  - [沙箱创建](docs/examples-zh.md#1-创建代码沙箱并获取三大客户端)
+  - [代码执行](docs/examples-zh.md#2-运行代码python-等)
+  - [文件操作](docs/examples-zh.md#3-文件系统操作读写列查删改名建目录)
+  - [终端命令执行](docs/examples-zh.md#4-命令进程管理前台后台输入信号进程列表)
+  - [沙箱管理](docs/examples-zh.md#5-代码沙箱列表和管理)
 - **浏览器沙箱 (sandbox/browser)**
   - 尚未实现
 - **核心包 (sandbox/core)**
-  - [直接创建](docs/examples.md#核心包-sandboxcore)
-  - [连接现有沙箱](docs/examples.md#核心包-sandboxcore)
-  - [列出沙箱](docs/examples.md#核心包-sandboxcore)
-  - [销毁沙箱](docs/examples.md#核心包-sandboxcore)
+  - [直接创建](docs/examples-zh.md#核心包-sandboxcore)
+  - [连接现有沙箱](docs/examples-zh.md#核心包-sandboxcore)
+  - [列出沙箱](docs/examples-zh.md#核心包-sandboxcore)
+  - [销毁沙箱](docs/examples-zh.md#核心包-sandboxcore)
 
 ## 安装
 
@@ -96,8 +96,8 @@ func main() {
 ```
 
 更多示例与进阶用法，请参阅：
-- [docs/examples.md](docs/examples.md)
-- [docs/sdk-reference.md](docs/sdk-reference.md)
+- [docs/examples-zh.md](docs/examples-zh.md)
+- [docs/sdk-reference-zh.md](docs/sdk-reference-zh.md)
 
 ## 先决条件
 
