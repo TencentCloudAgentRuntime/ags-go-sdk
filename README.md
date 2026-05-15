@@ -99,6 +99,14 @@ For more examples and advanced usage, please refer to:
 - [docs/examples.md](docs/examples.md)
 - [docs/sdk-reference.md](docs/sdk-reference.md)
 
+## Troubleshooting
+
+If you encounter errors, see the [Troubleshooting Guide](docs/troubleshooting.md) ([中文版](docs/troubleshooting-zh.md)) for solutions to common issues including:
+- Authentication and credential failures
+- Network and connection timeouts
+- Sandbox lifecycle errors
+- Code execution and filesystem errors
+
 ## Prerequisites
 
 - Tencent Cloud account with Agent Sandbox access
